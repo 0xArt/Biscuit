@@ -33,34 +33,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //////////////////////////////////////////////////////////////////////////////////
+import riscv_constants_package::*;
+
 module branch_manager(
-    input   wire            enable,
+    input   wire            execute_enable,
+    input   wire    [6:0]   opcode,
     input   wire            branch_taken,
     input   wire            branch_result,
+    input   wire    [31:0]  unbranched_program_counter,
+    input   wire    [31:0]  jalr_target,
 
-    output  logic           flush,
+    output  logic           flush_frontend,          // fetch, decode, register_status_table
+    output  logic           flush_execute,           // execute only (branch mispredict)
     output  logic           prediction_correct,
-    output  logic           valid
+    output  logic           valid,
+    output  logic   [31:0]  correct_program_counter
 );
 
 
-always_comb begin
-    valid               = '0;
-    prediction_correct  = '0;
-    flush               = '0;
+logic branch_enable;
+logic jalr_redirect;
 
-    if (enable) begin
+always_comb begin
+    branch_enable           = execute_enable && (opcode == OP_BRANCH);
+    jalr_redirect           = execute_enable && (opcode == OP_JALR);
+
+    valid                   = '0;
+    prediction_correct      = '0;
+    flush_frontend          = '0;
+    flush_execute           = '0;
+    correct_program_counter = unbranched_program_counter;
+
+    if (branch_enable) begin
+        valid = '1;
+
         if (branch_taken == branch_result) begin
             prediction_correct = '1;
         end
         else begin
-            prediction_correct  = '0;
-            flush               = '1;
+            // misprediction: squash the speculative path and redirect
+            prediction_correct      = '0;
+            flush_frontend          = '1;
+            flush_execute           = '1;
+            correct_program_counter = unbranched_program_counter;
         end
-
-        valid = '1;
+    end
+    if (jalr_redirect) begin
+        // JALR target (rs1 + imm) is only known now; squash the wrongly
+        // fetched fall-through path but let the JALR itself reach WB so it
+        // can write its link register -> NO flush_execute.
+        flush_frontend          = '1;
+        correct_program_counter = jalr_target & 32'hFFFFFFFE;
     end
 end
 
 
-endmodule   
+endmodule

@@ -61,9 +61,8 @@ logic [31:0]    _instruction;
 logic           _valid;
 logic [6:0]     opcode;
 logic [31:0]    immediate;
-logic [11:0]    imm_b; // B-type immediate
-logic [11:0]    imm_i; // I-type immediate
-logic [19:0]    imm_j; // J-type immediate
+logic [12:0]    imm_b; // B-type immediate (13-bit signed offset, imm[0]=0)
+logic [20:0]    imm_j; // J-type immediate (21-bit signed offset, imm[0]=0)
 logic [31:0]    _unbranched_program_counter;
 logic           _branch_taken;
 logic [4:0]     rs1;
@@ -74,7 +73,6 @@ always_comb begin
     immediate                   = '0;
     imm_b                       = {memory_read_data[31], memory_read_data[7], memory_read_data[30:25], memory_read_data[11:8], 1'b0};
     imm_j                       = {memory_read_data[31], memory_read_data[19:12], memory_read_data[20], memory_read_data[30:21], 1'b0};
-    imm_i                       = memory_read_data[31:20];
     opcode                      = memory_read_data[6:0];
     rs1                         = memory_read_data[19:15];
     _internal_program_counter   = internal_program_counter;
@@ -95,7 +93,7 @@ always_comb begin
             _valid                      = '1;
 
             if (opcode == OP_BRANCH) begin
-                immediate = {{20{imm_b[11]}}, imm_b}; // Sign-extend B-type immediate
+                immediate = {{19{imm_b[12]}}, imm_b}; // Sign-extend B-type immediate
 
                 if (take_branch) begin
                     _internal_program_counter   = internal_program_counter + immediate;
@@ -107,13 +105,11 @@ always_comb begin
                 end
             end
             if (opcode == OP_JAL) begin
-                immediate                   = {{12{imm_j[19]}}, imm_j}; // Sign-extend J-type immediate
+                immediate                   = {{11{imm_j[20]}}, imm_j}; // Sign-extend J-type immediate
                 _internal_program_counter   = internal_program_counter + immediate;
             end
-            if (opcode == OP_JALR) begin
-                immediate                   = {{20{imm_i[11]}}, imm_i}; // Sign-extend I-type immediate
-                _internal_program_counter   = internal_program_counter + immediate;
-            end
+            // JALR target = rs1 + imm, not known until Execute; fall through
+            // to PC+4 here and let branch_manager redirect on resolution.
         end
     end
 
