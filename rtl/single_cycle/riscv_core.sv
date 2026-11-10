@@ -174,7 +174,8 @@ riscv_register_file riscv_register_file(
     .write_data         (riscv_register_file_write_data),
 
     .read_data_one      (riscv_register_file_read_data_one),
-    .read_data_two_a    (riscv_register_file_read_data_two)   
+    .read_data_two_a    (riscv_register_file_read_data_two),
+    .read_data_two_b    ()
 );
 
 
@@ -237,7 +238,7 @@ wire [3:0]                              riscv_memory_reader_instruction_type;
 
 wire [31:0]                             riscv_memory_reader_read_data;
 wire                                    riscv_memory_reader_read_data_valid;
-wire [$clog2(DATA_MEMORY_DEPTH-1):0]    riscv_memory_reader_read_address;
+wire [$clog2(DATA_MEMORY_DEPTH)-1:0]    riscv_memory_reader_read_address;
 
 riscv_memory_reader #(
     .START_ADDRESS  (DATA_START_ADDRESS),
