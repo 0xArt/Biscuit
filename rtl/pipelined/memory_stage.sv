@@ -33,6 +33,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //////////////////////////////////////////////////////////////////////////////////
+import riscv_constants_package::*;
+
 module memory_stage#(
     parameter DATA_MEMORY_DEPTH         = 4096,
     parameter DATA_START_ADDRESS        = 'h0
@@ -41,6 +43,7 @@ module memory_stage#(
     input   wire                                    reset_n,
     input   wire                                    enable,
     input   wire                                    upstream_enable,
+    input   wire                                    occupant_arriving,
     input   wire    [31:0]                          register_status,
     input   wire    [31:0]                          alu_result_delivered,
     input   wire    [31:0]                          data_memory_read_data,
@@ -126,6 +129,8 @@ logic                                   _read_data_valid;
 logic [4:0]                             _rd_shipped;
 logic                                   _valid;
 logic                                   read_after_write_hazard;
+logic                                   store_instruction;
+reg                                     store_data_seen;
 
 always_comb begin
     _read_data                      = read_data;
@@ -138,7 +143,18 @@ always_comb begin
     _read_data_valid                = '0;
     ready                           = '0;
 
-    if (register_status[rs2] && (rs2 != rd_delivered)) begin
+    // a store reads its data register here, and nothing else reads a register
+    // in this stage. It waits until that register is free of every writer
+    // ahead of it, and only those: the instruction decode lets in behind it
+    // marks its own register busy a clock after the store arrives, so once
+    // the store has seen its register free it stays let through, or a store
+    // held here -- by halt or a stalled write back -- would wait for good on the
+    // writer of its data register behind it. That writer cannot write the
+    // register file before the store has left, so the store's data is still
+    // there. In a store, the rd field is the offset's low bits
+    store_instruction   = (instruction_type == S_TYPE);
+
+    if (store_instruction && register_status[rs2] && !store_data_seen) begin
         read_after_write_hazard = '1;
     end
     else begin
@@ -163,6 +179,17 @@ always_comb begin
                 _valid                      = '1;
             end
         end
+    end
+end
+
+// cleared each time execute's output takes a new instruction, so it is only
+// ever about the one in the slot
+always_ff @(posedge clock) begin
+    if (!reset_n || occupant_arriving) begin
+        store_data_seen <= '0;
+    end
+    else if (store_instruction && !register_status[rs2]) begin
+        store_data_seen <= '1;
     end
 end
 

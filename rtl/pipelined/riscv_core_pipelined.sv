@@ -423,6 +423,7 @@ memory_stage #(
     .reset_n                        (memory_stage_reset_n),
     .enable                         (memory_stage_enable),
     .upstream_enable                (memory_stage_upstream_enable),
+    .occupant_arriving              (execute_stage_ready),
     .register_status                (memory_stage_register_status),
     .alu_result_delivered           (memory_stage_alu_result_delivered),
     .data_memory_read_data          (memory_stage_data_memory_read_data),
