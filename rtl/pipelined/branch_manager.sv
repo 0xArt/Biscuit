@@ -80,9 +80,12 @@ always_comb begin
     end
     if (jalr_redirect) begin
         // JALR target (rs1 + imm) is only known now; squash the wrongly
-        // fetched fall-through path but let the JALR itself reach WB so it
-        // can write its link register -> NO flush_execute.
+        // fetched fall-through path and redirect. The execute stage outputs
+        // are registered, so by the time the JALR is visible here it has
+        // already shipped downstream (its link write is safe); flush_execute
+        // kills the wrong-path instruction currently inside execute.
         flush_frontend          = '1;
+        flush_execute           = '1;
         correct_program_counter = jalr_target & 32'hFFFFFFFE;
     end
 end
