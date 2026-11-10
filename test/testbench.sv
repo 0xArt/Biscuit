@@ -34,13 +34,15 @@
 // limitations under the License.
 //////////////////////////////////////////////////////////////////////////////////
 
-// Two cores. The single cycle core and the pipelined core run the program
-// below, and case_000 checks what it leaves behind in both.
+// Three cores. The single cycle core and the pipelined core run the program
+// below, and case_000 checks what it leaves behind in both. A second pipelined
+// core runs the scoreboard program, which case_001 checks.
 module testbench;
 
 localparam  CLOCK_FREQUENCY = 100_000_000;
 localparam  CLOCK_PERIOD    = 1e9/CLOCK_FREQUENCY;
 localparam  PROGRAM_SIZE    = 40;
+localparam  SCOREBOARD_SIZE = 27;
 
 logic clock;
 logic reset_n;
@@ -82,6 +84,55 @@ riscv_core_pipelined riscv_core_pipelined(
     .program_memory_write_data_enable   (riscv_core_pipelined_program_memory_write_data_enable),
     .program_memory_write_address       (riscv_core_pipelined_program_memory_write_address)
 );
+
+
+// ---- a pipelined core on the scoreboard program, for case_001 ----
+logic [31:0]    riscv_core_pipelined_scoreboard_program_memory_write_data;
+logic           riscv_core_pipelined_scoreboard_program_memory_write_data_enable;
+logic [31:0]    riscv_core_pipelined_scoreboard_program_memory_write_address;
+logic [31:0]    scoreboard_program [0:SCOREBOARD_SIZE-1];
+
+riscv_core_pipelined riscv_core_pipelined_scoreboard(
+    .clock                              (riscv_core_pipelined_clock),
+    .reset_n                            (riscv_core_pipelined_reset_n),
+    .halt                               (riscv_core_pipelined_halt),
+    .program_memory_write_data          (riscv_core_pipelined_scoreboard_program_memory_write_data),
+    .program_memory_write_data_enable   (riscv_core_pipelined_scoreboard_program_memory_write_data_enable),
+    .program_memory_write_address       (riscv_core_pipelined_scoreboard_program_memory_write_address)
+);
+
+// two writers of one register back to back, and a register written down the
+// wrong path of a loop's exit: the scoreboard holds one bit per register, and
+// each of these used to leave it wrong
+initial begin
+    scoreboard_program[0]  = 32'h00000013; // nop
+    scoreboard_program[1]  = 32'h00000013; // nop
+    scoreboard_program[2]  = 32'h00000013; // nop
+    scoreboard_program[3]  = 32'h12345337; // lui  t1, 0x12345
+    scoreboard_program[4]  = 32'h67830313; // addi t1, t1, 0x678  -- a second writer of t1 right behind the first
+    scoreboard_program[5]  = 32'h04602023; // sw   t1, 64(zero)    -- must store 0x12345678
+    scoreboard_program[6]  = 32'habcde3b7; // lui  t2, 0xabcde
+    scoreboard_program[7]  = 32'h12338393; // addi t2, t2, 0x123
+    scoreboard_program[8]  = 32'h00038e33; // add  t3, t2, zero    -- must read 0xabcde123
+    scoreboard_program[9]  = 32'h00300513; // addi a0, zero, 3
+    scoreboard_program[10] = 32'h00000593; // addi a1, zero, 0
+    scoreboard_program[11] = 32'h00158593; // loop: addi a1, a1, 1
+    scoreboard_program[12] = 32'hfff50513; // addi a0, a0, -1      -- also fetched down the wrong path as the loop exits
+    scoreboard_program[13] = 32'hfe051ce3; // bne  a0, zero, loop
+    scoreboard_program[14] = 32'h00058613; // addi a2, a1, 0
+    scoreboard_program[15] = 32'h00a58593; // addi a1, a1, 10
+    scoreboard_program[16] = 32'h00c58eb3; // add  t4, a1, a2
+    scoreboard_program[17] = 32'h05d02223; // sw   t4, 68(zero)    -- 13 + 3 = 16
+    scoreboard_program[18] = 32'h00700513; // addi a0, zero, 7     -- a writer of a0 after the wrong path's flushed one
+    scoreboard_program[19] = 32'h04a02423; // sw   a0, 72(zero)    -- must store 7
+    scoreboard_program[20] = 32'h03000793; // addi a5, zero, 0x30
+    scoreboard_program[21] = 32'h00178713; // addi a4, a5, 1       -- still busy when the xor is let in
+    scoreboard_program[22] = 32'h00e7c7b3; // xor  a5, a5, a4      -- reads the register it writes, and waits on a4
+    scoreboard_program[23] = 32'h04f02623; // sw   a5, 76(zero)    -- 0x30 ^ 0x31 = 1
+    scoreboard_program[24] = 32'h00500413; // addi s0, zero, 5
+    scoreboard_program[25] = 32'h00802423; // sw   s0, 8(zero)     -- the offset's low bits name s0, the register it stores
+    scoreboard_program[26] = 32'h0000006f; // j    .
+end
 
 
 initial begin
@@ -152,9 +203,21 @@ initial begin
     riscv_core_pipelined_program_memory_write_data          = '0;
     riscv_core_pipelined_program_memory_write_data_enable   = '0;
     riscv_core_pipelined_program_memory_write_address       = '0;
+    riscv_core_pipelined_scoreboard_program_memory_write_data           = '0;
+    riscv_core_pipelined_scoreboard_program_memory_write_data_enable    = '0;
+    riscv_core_pipelined_scoreboard_program_memory_write_address        = '0;
     halt    = 1;
     wait(reset_n);
     repeat(10) @(posedge clock);
+
+    for (i = 0; i < SCOREBOARD_SIZE; i = i + 1) begin
+        @(posedge clock);
+        riscv_core_pipelined_scoreboard_program_memory_write_address       = i;
+        riscv_core_pipelined_scoreboard_program_memory_write_data          = scoreboard_program[i];
+        riscv_core_pipelined_scoreboard_program_memory_write_data_enable   = '1;
+    end
+    @(posedge clock);
+    riscv_core_pipelined_scoreboard_program_memory_write_data_enable   = '0;
     
     for (i = 0; i < PROGRAM_SIZE; i = i + 1) begin
         @(posedge clock);
@@ -173,10 +236,12 @@ initial begin
     halt    = 0;
     repeat(555) @(posedge clock);
     case_000();
+    case_001();
     $stop();
 end
 
 `include "case_000/case_000.svh"
+`include "case_001/case_001.svh"
 
 
 assign riscv_core_clock             = clock;
