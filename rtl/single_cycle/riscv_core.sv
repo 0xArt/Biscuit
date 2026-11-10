@@ -81,8 +81,7 @@ wire        riscv_program_counter_reset_n;
 wire        riscv_program_counter_halt;
 wire [3:0]  riscv_program_counter_instruction_type;
 wire [6:0]  riscv_program_counter_opcode;
-wire [2:0]  riscv_program_counter_funct3;
-wire [31:0] riscv_program_counter_alu_result;
+wire        riscv_program_counter_branch_taken;
 wire [31:0] riscv_program_counter_immediate;
 wire [31:0] riscv_program_counter_read_data_one;
 
@@ -94,8 +93,7 @@ riscv_program_counter riscv_program_counter(
     .halt               (riscv_program_counter_halt),
     .instruction_type   (riscv_program_counter_instruction_type),
     .opcode             (riscv_program_counter_opcode),
-    .funct3             (riscv_program_counter_funct3),
-    .alu_result         (riscv_program_counter_alu_result),
+    .branch_taken       (riscv_program_counter_branch_taken),
     .immediate          (riscv_program_counter_immediate),
     .read_data_one      (riscv_program_counter_read_data_one),
 
@@ -176,7 +174,8 @@ riscv_register_file riscv_register_file(
     .write_data         (riscv_register_file_write_data),
 
     .read_data_one      (riscv_register_file_read_data_one),
-    .read_data_two_a    (riscv_register_file_read_data_two)   
+    .read_data_two_a    (riscv_register_file_read_data_two),
+    .read_data_two_b    ()
 );
 
 
@@ -239,7 +238,7 @@ wire [3:0]                              riscv_memory_reader_instruction_type;
 
 wire [31:0]                             riscv_memory_reader_read_data;
 wire                                    riscv_memory_reader_read_data_valid;
-wire [$clog2(DATA_MEMORY_DEPTH-1):0]    riscv_memory_reader_read_address;
+wire [$clog2(DATA_MEMORY_DEPTH)-1:0]    riscv_memory_reader_read_address;
 
 riscv_memory_reader #(
     .START_ADDRESS  (DATA_START_ADDRESS),
@@ -291,8 +290,7 @@ assign riscv_program_counter_reset_n                = reset_n;
 assign riscv_program_counter_halt                   = halt;
 assign riscv_program_counter_instruction_type       = riscv_instruction_decoder_instruction_type;
 assign riscv_program_counter_opcode                 = riscv_instruction_decoder_opcode;
-assign riscv_program_counter_funct3                 = riscv_instruction_decoder_funct3;
-assign riscv_program_counter_alu_result             = riscv_alu_result;
+assign riscv_program_counter_branch_taken           = riscv_alu_branch_taken;
 assign riscv_program_counter_immediate              = riscv_instruction_decoder_imm;
 assign riscv_program_counter_read_data_one          = riscv_register_file_read_data_one;
 

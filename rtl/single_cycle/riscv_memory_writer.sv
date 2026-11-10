@@ -87,7 +87,7 @@ always_comb begin
                     write_byte_select   = 4'b0011;
                     write_data          = read_data & 32'hFFFF;
                 end
-                if (alu_result[1:0] == 2'b01) begin
+                if (alu_result[1:0] == 2'b10) begin
                     write_byte_select   = 4'b1100;
                     write_data          = (read_data & 32'hFFFF) << 16;
                 end

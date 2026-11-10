@@ -185,22 +185,32 @@ base_branch_predictor base_branch_predictor(
 );
 
 
-wire branch_manager_enable;
-wire branch_manager_branch_taken;
-wire branch_manager_branch_result;
+wire            branch_manager_execute_enable;
+wire    [6:0]   branch_manager_opcode;
+wire            branch_manager_branch_taken;
+wire            branch_manager_branch_result;
+wire    [31:0]  branch_manager_unbranched_program_counter;
+wire    [31:0]  branch_manager_jalr_target;
 
-wire branch_manager_flush;
-wire branch_manager_prediction_correct;
-wire branch_manager_valid;
+wire            branch_manager_flush_frontend;
+wire            branch_manager_flush_execute;
+wire            branch_manager_prediction_correct;
+wire            branch_manager_valid;
+wire    [31:0]  branch_manager_correct_program_counter;
 
 branch_manager branch_manager(
-    .enable                         (branch_manager_enable),
+    .execute_enable                  (branch_manager_execute_enable),
+    .opcode                         (branch_manager_opcode),
     .branch_taken                   (branch_manager_branch_taken),
     .branch_result                  (branch_manager_branch_result),
+    .unbranched_program_counter     (branch_manager_unbranched_program_counter),
+    .jalr_target                    (branch_manager_jalr_target),
 
-    .flush                          (branch_manager_flush),
+    .flush_frontend                 (branch_manager_flush_frontend),
+    .flush_execute                  (branch_manager_flush_execute),
     .prediction_correct             (branch_manager_prediction_correct),
-    .valid                          (branch_manager_valid)
+    .valid                          (branch_manager_valid),
+    .correct_program_counter        (branch_manager_correct_program_counter)
 );
 
 
@@ -413,6 +423,7 @@ memory_stage #(
     .reset_n                        (memory_stage_reset_n),
     .enable                         (memory_stage_enable),
     .upstream_enable                (memory_stage_upstream_enable),
+    .occupant_arriving              (execute_stage_ready),
     .register_status                (memory_stage_register_status),
     .alu_result_delivered           (memory_stage_alu_result_delivered),
     .data_memory_read_data          (memory_stage_data_memory_read_data),
@@ -513,7 +524,7 @@ assign register_status_table_busy_register                  = decode_stage_rd;
 assign register_status_table_busy_enable                    = decode_stage_register_status_valid;
 assign register_status_table_retire_register                = write_back_stage_rd_shipped;
 assign register_status_table_retire_enable                  = write_back_stage_register_status_valid;
-assign register_status_table_flush                          = branch_manager_flush;
+assign register_status_table_flush                          = branch_manager_flush_frontend;
 
 assign base_branch_predictor_clock                          = clock;
 assign base_branch_predictor_reset_n                        = reset_n;
@@ -524,9 +535,12 @@ assign base_branch_predictor_program_counter_prediction     = fetch_stage_memory
 assign base_branch_predictor_update_enable                  = branch_manager_valid;
 assign base_branch_predictor_program_counter_update         = execute_stage_program_counter_shipped >> 2;
 
-assign branch_manager_enable                                = execute_stage_valid && (execute_stage_opcode_shipped == OP_BRANCH);
+assign branch_manager_execute_enable                        = execute_stage_valid;
+assign branch_manager_opcode                                = execute_stage_opcode_shipped;
 assign branch_manager_branch_taken                          = execute_stage_branch_taken_shipped;
 assign branch_manager_branch_result                         = execute_stage_take_branch;
+assign branch_manager_unbranched_program_counter            = execute_stage_unbranched_program_counter_shipped;
+assign branch_manager_jalr_target                           = execute_stage_alu_result;
 
 assign fetch_stage_clock                                    = clock;
 assign fetch_stage_reset_n                                  = reset_n;
@@ -534,13 +548,13 @@ assign fetch_stage_enable                                   = !halt;
 assign fetch_stage_upstream_enable                          = decode_stage_ready;
 assign fetch_stage_memory_read_data                         = riscv_instruction_memory_read_data;
 assign fetch_stage_take_branch                              = base_branch_predictor_take_branch;
-assign fetch_stage_flush                                    = branch_manager_flush;
-assign fetch_stage_correct_program_counter                  = execute_stage_unbranched_program_counter_shipped;
+assign fetch_stage_flush                                    = branch_manager_flush_frontend;
+assign fetch_stage_correct_program_counter                  = branch_manager_correct_program_counter;
 
 assign decode_stage_clock                                   = clock;
 assign decode_stage_reset_n                                 = reset_n;
 assign decode_stage_enable                                  = !halt && fetch_stage_valid;
-assign decode_stage_flush                                   = branch_manager_flush;
+assign decode_stage_flush                                   = branch_manager_flush_frontend;
 assign decode_stage_upstream_enable                         = execute_stage_ready;
 assign decode_stage_instruction                             = fetch_stage_instruction;
 assign decode_stage_program_counter_delivered               = fetch_stage_program_counter;
@@ -551,7 +565,7 @@ assign decode_stage_register_status                         = register_status_ta
 assign execute_stage_clock                                  = clock;
 assign execute_stage_reset_n                                = reset_n;
 assign execute_stage_enable                                 = decode_stage_valid && !halt;
-assign execute_stage_flush                                  = branch_manager_flush;
+assign execute_stage_flush                                  = branch_manager_flush_execute;
 assign execute_stage_upstream_enable                        = memory_stage_ready;
 assign execute_stage_register_status                        = register_status_table_status;
 assign execute_stage_register_file_read_data_one            = riscv_register_file_read_data_one;

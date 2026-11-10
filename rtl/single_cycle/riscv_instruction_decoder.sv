@@ -52,8 +52,8 @@ module riscv_instruction_decoder (
 // Internal signals
 logic [11:0]    imm_i; // I-type immediate
 logic [11:0]    imm_s; // S-type immediate
-logic [11:0]    imm_b; // B-type immediate
-logic [19:0]    imm_j; // J-type immediate
+logic [12:0]    imm_b; // B-type immediate (13-bit signed offset, imm[0]=0)
+logic [20:0]    imm_j; // J-type immediate (21-bit signed offset, imm[0]=0)
 logic [31:12]   imm_u; // U-type immediate
 
 
@@ -82,6 +82,7 @@ always_comb begin
             alu_source  = 1;
             instruction_type    = I_TYPE;
             imm                 = {{20{imm_i[11]}}, imm_i}; // Sign-extend I-type immediate
+            rs2                 = '0; // I-type has no rs2 (field is immediate)
         end
         OP_STORE: begin
             alu_source          = 1;
@@ -90,19 +91,25 @@ always_comb begin
         end
         OP_BRANCH: begin
             instruction_type    = B_TYPE;
-            imm                 = {{20{imm_b[11]}}, imm_b}; // Sign-extend B-type immediate
+            imm                 = {{19{imm_b[12]}}, imm_b}; // Sign-extend B-type immediate
         end
         OP_LUI, OP_AUIPC: begin
             instruction_type    = U_TYPE;
             imm                 = {imm_u, 12'b0}; // U-type immediate (shifted left by 12)
+            rs1                 = '0; // U-type reads no registers
+            rs2                 = '0;
         end
         OP_JAL: begin
             instruction_type    = J_TYPE;
-            imm                 = {{12{imm_j[19]}}, imm_j}; // Sign-extend J-type immediate
+            imm                 = {{11{imm_j[20]}}, imm_j}; // Sign-extend J-type immediate
+            rs1                 = '0; // J-type reads no registers
+            rs2                 = '0;
         end
         default: begin
             instruction_type    = 4'b0; // Invalid/unknown instruction
             imm                 = 32'b0;
+            rs1                 = '0; // unknown: reads no registers
+            rs2                 = '0;
         end
     endcase
 end

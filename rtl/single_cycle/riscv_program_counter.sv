@@ -41,8 +41,7 @@ module riscv_program_counter(
     input   wire            halt,
     input   wire    [3:0]   instruction_type,
     input   wire    [6:0]   opcode,
-    input   wire    [2:0]   funct3,
-    input   wire    [31:0]  alu_result,
+    input   wire            branch_taken,
     input   wire    [31:0]  immediate,
     input   wire    [31:0]  read_data_one,
 
@@ -61,26 +60,13 @@ always_comb begin
     end
 
     if (instruction_type == B_TYPE) begin
-        if (funct3  == F3_BEQ) begin
-            if (alu_result == 0) begin
-                alternative_increment   = 1;
-            end
-        end
-        if (funct3 == F3_BLT || funct3 == F3_BLTU) begin
-            if (alu_result[0]) begin
-                alternative_increment   = 1;
-            end
-        end
-        if (funct3 == F3_BNE) begin
-            if (alu_result != 0) begin
-                alternative_increment   = 1;
-            end
-        end
-        if (funct3 == F3_BGE || funct3 == F3_BGEU) begin
-            if (!alu_result[0]) begin
-                alternative_increment   = 1;
-            end
-        end
+        // branch decision comes from the ALU's comparators (BEQ/BNE/BLT/BGE/BLTU/BGEU)
+        alternative_increment   = branch_taken;
+    end
+
+    if (opcode == OP_JALR) begin
+        // JALR is unconditional; decodes to I_TYPE so it needs its own trigger
+        alternative_increment   = 1;
     end
 
     if (!halt) begin

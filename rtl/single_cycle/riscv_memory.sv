@@ -61,7 +61,7 @@ wire [$clog2(MEMORY_DEPTH)-1:0] block_ram_read_address;
 wire [3:0][7:0]                 block_ram_read_data;
 
 generate
-    for(i = 0; i < 4; i = i + 1) begin
+    for(i = 0; i < 4; i = i + 1) begin : byte_lane
         block_ram #(
             .DATA_WIDTH         (8),
             .DATA_DEPTH         (MEMORY_DEPTH),

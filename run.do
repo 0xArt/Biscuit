@@ -6,7 +6,7 @@ vlib presynth
 vmap presynth presynth
 
 
-vlog -sv -work presynth \
+vlog -sv -work presynth +incdir+test \
     "rtl/block_ram/generic_block_ram.sv" \
     "rtl/block_ram/block_ram.sv" \
     "rtl/riscv_constants_package.sv" \

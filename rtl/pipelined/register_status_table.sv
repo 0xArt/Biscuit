@@ -62,6 +62,8 @@ always_comb begin
     if (flush) begin
         _status = '0;
     end
+
+    _status[0] = 1'b0; // x0 is hardwired to zero and can never be in-flight/busy
 end
 
 always_ff @(posedge clock) begin

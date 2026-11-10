@@ -33,6 +33,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //////////////////////////////////////////////////////////////////////////////////
+import riscv_constants_package::*;
+
 module execute_stage(
     input   wire            clock,
     input   wire            reset_n,
@@ -109,6 +111,7 @@ logic [2:0]     _funct3_shipped;
 logic [3:0]     _instruction_type_shipped;
 logic [31:0]    _register_file_read_data_two_shipped;
 logic           read_after_write_hazard;
+logic           own_mark;
 logic [31:0]    _unbranched_program_counter_shipped;
 logic           _branch_taken_shipped;
 
@@ -129,7 +132,19 @@ always_comb begin
     _valid                                  = valid;
     ready                                   = '0;
 
-    if (register_status[rs1_delivered] || (!alu_source && register_status[rs2_delivered])) begin
+    // decode marks a writer's register busy as it lets it in, so one that
+    // reads the register it writes -- xor a5, a5, a4 -- and is held here a
+    // clock for its other operand finds its own mark next clock and waits on
+    // itself for good. Decode lets a writer in only once every earlier writer
+    // of its register has retired, so a busy bit on its own rd is its own, and
+    // the value in the register file is the one it reads. Only a writer has an
+    // rd: in a store or a branch those bits are the immediate
+    own_mark = ((instruction_type_delivered == R_TYPE) || (instruction_type_delivered == I_TYPE)
+                || (instruction_type_delivered == U_TYPE) || (instruction_type_delivered == J_TYPE))
+               && (rd_delivered != '0);
+
+    if ((register_status[rs1_delivered] && !(own_mark && (rs1_delivered == rd_delivered)))
+        || (!alu_source && register_status[rs2_delivered] && !(own_mark && (rs2_delivered == rd_delivered)))) begin
         read_after_write_hazard = '1;
     end
     else begin
