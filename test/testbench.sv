@@ -43,6 +43,8 @@ localparam  CLOCK_FREQUENCY = 100_000_000;
 localparam  CLOCK_PERIOD    = 1e9/CLOCK_FREQUENCY;
 localparam  PROGRAM_SIZE    = 40;
 localparam  SCOREBOARD_SIZE = 27;
+localparam  INSTRUCTION_MEMORY_DEPTH    = 4096;
+localparam  ADDRESS_WIDTH               = $clog2(INSTRUCTION_MEMORY_DEPTH);
 
 logic clock;
 logic reset_n;
@@ -57,7 +59,7 @@ logic           riscv_core_reset_n;
 logic           riscv_core_halt;
 logic [31:0]    riscv_core_program_memory_write_data;
 logic           riscv_core_program_memory_write_data_enable;
-logic [31:0]    riscv_core_program_memory_write_address;
+logic [ADDRESS_WIDTH-1:0]    riscv_core_program_memory_write_address;
 
 riscv_core riscv_core(
     .clock                              (riscv_core_clock),
@@ -74,7 +76,7 @@ logic           riscv_core_pipelined_reset_n;
 logic           riscv_core_pipelined_halt;
 logic [31:0]    riscv_core_pipelined_program_memory_write_data;
 logic           riscv_core_pipelined_program_memory_write_data_enable;
-logic [31:0]    riscv_core_pipelined_program_memory_write_address;
+logic [ADDRESS_WIDTH-1:0]    riscv_core_pipelined_program_memory_write_address;
 
 riscv_core_pipelined riscv_core_pipelined(
     .clock                              (riscv_core_pipelined_clock),
@@ -89,7 +91,7 @@ riscv_core_pipelined riscv_core_pipelined(
 // ---- a pipelined core on the scoreboard program, for case_001 ----
 logic [31:0]    riscv_core_pipelined_scoreboard_program_memory_write_data;
 logic           riscv_core_pipelined_scoreboard_program_memory_write_data_enable;
-logic [31:0]    riscv_core_pipelined_scoreboard_program_memory_write_address;
+logic [ADDRESS_WIDTH-1:0]    riscv_core_pipelined_scoreboard_program_memory_write_address;
 logic [31:0]    scoreboard_program [0:SCOREBOARD_SIZE-1];
 
 riscv_core_pipelined riscv_core_pipelined_scoreboard(
