@@ -50,7 +50,7 @@ module block_ram#(
 
 
 generate
-    if (TECHNOLOGY == "ULTRASCALE" || TECHNOLOGY == "7_SERIES") begin
+    if (TECHNOLOGY == "ULTRASCALE" || TECHNOLOGY == "7_SERIES") begin : xpm
         localparam READ_LATENCY = PIPELINED_OUTPUT + 1;
 
         wire    [DATA_WIDTH-1:0]            xpm_memory_sdpram_dina;
@@ -125,7 +125,7 @@ generate
         assign  xpm_memory_sdpram_rstb  = !reset_n;
         assign  xpm_memory_sdpram_wea   = write_enable;
     end
-    else begin
+    else begin : inferred
         wire                                generic_block_ram_clock;
         wire                                generic_block_ram_reset_n;
         wire                                generic_block_ram_write_enable;

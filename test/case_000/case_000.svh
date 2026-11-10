@@ -58,19 +58,19 @@ $display("Running case 000");
 
 //---------------- single cycle core ----------------
 //branch / arithmetic / word store chain
-check("sc mem[80]",   testbench.riscv_core.riscv_data_memory.genblk1[0].block_ram.genblk1.generic_block_ram.memory[80], 7);
-check("sc mem[84]",   testbench.riscv_core.riscv_data_memory.genblk1[0].block_ram.genblk1.generic_block_ram.memory[84], 71);
+check("sc mem[80]",   testbench.riscv_core.riscv_data_memory.byte_lane[0].block_ram.inferred.generic_block_ram.memory[80], 7);
+check("sc mem[84]",   testbench.riscv_core.riscv_data_memory.byte_lane[0].block_ram.inferred.generic_block_ram.memory[84], 71);
 //jalr: correct target, link value stored, fall-through squashed
-check("sc mem[88]",   testbench.riscv_core.riscv_data_memory.genblk1[0].block_ram.genblk1.generic_block_ram.memory[88], 88);
+check("sc mem[88]",   testbench.riscv_core.riscv_data_memory.byte_lane[0].block_ram.inferred.generic_block_ram.memory[88], 88);
 check("sc x1",        testbench.riscv_core.riscv_register_file.registers[1],  88);
 check("sc x28",       testbench.riscv_core.riscv_register_file.registers[28], 0);
 check("sc x29",       testbench.riscv_core.riscv_register_file.registers[29], 0);
 //sub-word stores land in the right byte lanes
-check("sc mem[94].2", testbench.riscv_core.riscv_data_memory.genblk1[2].block_ram.genblk1.generic_block_ram.memory[94], 8'h23);
-check("sc mem[94].3", testbench.riscv_core.riscv_data_memory.genblk1[3].block_ram.genblk1.generic_block_ram.memory[94], 8'h01);
-check("sc mem[90].2", testbench.riscv_core.riscv_data_memory.genblk1[2].block_ram.genblk1.generic_block_ram.memory[90], 8'hFE);
-check("sc mem[90].3", testbench.riscv_core.riscv_data_memory.genblk1[3].block_ram.genblk1.generic_block_ram.memory[90], 8'hFF);
-check("sc mem[89].1", testbench.riscv_core.riscv_data_memory.genblk1[1].block_ram.genblk1.generic_block_ram.memory[89], 8'hFB);
+check("sc mem[94].2", testbench.riscv_core.riscv_data_memory.byte_lane[2].block_ram.inferred.generic_block_ram.memory[94], 8'h23);
+check("sc mem[94].3", testbench.riscv_core.riscv_data_memory.byte_lane[3].block_ram.inferred.generic_block_ram.memory[94], 8'h01);
+check("sc mem[90].2", testbench.riscv_core.riscv_data_memory.byte_lane[2].block_ram.inferred.generic_block_ram.memory[90], 8'hFE);
+check("sc mem[90].3", testbench.riscv_core.riscv_data_memory.byte_lane[3].block_ram.inferred.generic_block_ram.memory[90], 8'hFF);
+check("sc mem[89].1", testbench.riscv_core.riscv_data_memory.byte_lane[1].block_ram.inferred.generic_block_ram.memory[89], 8'hFB);
 //sub-word loads: lane select plus sign/zero extension
 check("sc x12 (lh)",  testbench.riscv_core.riscv_register_file.registers[12], 291);
 check("sc x13 (lhu)", testbench.riscv_core.riscv_register_file.registers[13], 291);
@@ -80,17 +80,17 @@ check("sc x19 (lb)",  testbench.riscv_core.riscv_register_file.registers[19], -5
 check("sc x20 (lbu)", testbench.riscv_core.riscv_register_file.registers[20], 251);
 
 //---------------- pipelined core ----------------
-check("pl mem[80]",   testbench.riscv_core_pipelined.riscv_data_memory.genblk1[0].block_ram.genblk1.generic_block_ram.memory[80], 7);
-check("pl mem[84]",   testbench.riscv_core_pipelined.riscv_data_memory.genblk1[0].block_ram.genblk1.generic_block_ram.memory[84], 71);
-check("pl mem[88]",   testbench.riscv_core_pipelined.riscv_data_memory.genblk1[0].block_ram.genblk1.generic_block_ram.memory[88], 88);
+check("pl mem[80]",   testbench.riscv_core_pipelined.riscv_data_memory.byte_lane[0].block_ram.inferred.generic_block_ram.memory[80], 7);
+check("pl mem[84]",   testbench.riscv_core_pipelined.riscv_data_memory.byte_lane[0].block_ram.inferred.generic_block_ram.memory[84], 71);
+check("pl mem[88]",   testbench.riscv_core_pipelined.riscv_data_memory.byte_lane[0].block_ram.inferred.generic_block_ram.memory[88], 88);
 check("pl x1",        testbench.riscv_core_pipelined.riscv_register_file.registers[1],  88);
 check("pl x28",       testbench.riscv_core_pipelined.riscv_register_file.registers[28], 0);
 check("pl x29",       testbench.riscv_core_pipelined.riscv_register_file.registers[29], 0);
-check("pl mem[94].2", testbench.riscv_core_pipelined.riscv_data_memory.genblk1[2].block_ram.genblk1.generic_block_ram.memory[94], 8'h23);
-check("pl mem[94].3", testbench.riscv_core_pipelined.riscv_data_memory.genblk1[3].block_ram.genblk1.generic_block_ram.memory[94], 8'h01);
-check("pl mem[90].2", testbench.riscv_core_pipelined.riscv_data_memory.genblk1[2].block_ram.genblk1.generic_block_ram.memory[90], 8'hFE);
-check("pl mem[90].3", testbench.riscv_core_pipelined.riscv_data_memory.genblk1[3].block_ram.genblk1.generic_block_ram.memory[90], 8'hFF);
-check("pl mem[89].1", testbench.riscv_core_pipelined.riscv_data_memory.genblk1[1].block_ram.genblk1.generic_block_ram.memory[89], 8'hFB);
+check("pl mem[94].2", testbench.riscv_core_pipelined.riscv_data_memory.byte_lane[2].block_ram.inferred.generic_block_ram.memory[94], 8'h23);
+check("pl mem[94].3", testbench.riscv_core_pipelined.riscv_data_memory.byte_lane[3].block_ram.inferred.generic_block_ram.memory[94], 8'h01);
+check("pl mem[90].2", testbench.riscv_core_pipelined.riscv_data_memory.byte_lane[2].block_ram.inferred.generic_block_ram.memory[90], 8'hFE);
+check("pl mem[90].3", testbench.riscv_core_pipelined.riscv_data_memory.byte_lane[3].block_ram.inferred.generic_block_ram.memory[90], 8'hFF);
+check("pl mem[89].1", testbench.riscv_core_pipelined.riscv_data_memory.byte_lane[1].block_ram.inferred.generic_block_ram.memory[89], 8'hFB);
 check("pl x12 (lh)",  testbench.riscv_core_pipelined.riscv_register_file.registers[12], 291);
 check("pl x13 (lhu)", testbench.riscv_core_pipelined.riscv_register_file.registers[13], 291);
 check("pl x15 (lh)",  testbench.riscv_core_pipelined.riscv_register_file.registers[15], -2);

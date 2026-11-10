@@ -54,10 +54,10 @@ task check_scoreboard(input string name, input logic [31:0] got, input logic [31
 endtask
 
 function automatic logic [31:0] scoreboard_word(input integer row);
-    scoreboard_word = {testbench.riscv_core_pipelined_scoreboard.riscv_data_memory.genblk1[3].block_ram.genblk1.generic_block_ram.memory[row],
-                       testbench.riscv_core_pipelined_scoreboard.riscv_data_memory.genblk1[2].block_ram.genblk1.generic_block_ram.memory[row],
-                       testbench.riscv_core_pipelined_scoreboard.riscv_data_memory.genblk1[1].block_ram.genblk1.generic_block_ram.memory[row],
-                       testbench.riscv_core_pipelined_scoreboard.riscv_data_memory.genblk1[0].block_ram.genblk1.generic_block_ram.memory[row]};
+    scoreboard_word = {testbench.riscv_core_pipelined_scoreboard.riscv_data_memory.byte_lane[3].block_ram.inferred.generic_block_ram.memory[row],
+                       testbench.riscv_core_pipelined_scoreboard.riscv_data_memory.byte_lane[2].block_ram.inferred.generic_block_ram.memory[row],
+                       testbench.riscv_core_pipelined_scoreboard.riscv_data_memory.byte_lane[1].block_ram.inferred.generic_block_ram.memory[row],
+                       testbench.riscv_core_pipelined_scoreboard.riscv_data_memory.byte_lane[0].block_ram.inferred.generic_block_ram.memory[row]};
 endfunction
 
 task case_001();
