@@ -139,7 +139,16 @@ always_comb begin
         _valid  = '0;
     end
     
-    if (register_status[riscv_instruction_decoder_rd] && register_write_instruction) begin
+    // a second writer of a register waits for the first to retire: the
+    // scoreboard holds one bit per register, so the first one's retire would
+    // clear the bit the second one set, and everything reading the register
+    // behind them would read the first one's value. The table's bit is set an
+    // edge after the instruction in this stage's output marks it, so that
+    // instruction, whose mark is still in flight, is checked here too -- or
+    // `lui t1; addi t1, t1` escapes the check. x0 is never busy, so writes to
+    // it never wait
+    if (register_write_instruction && (riscv_instruction_decoder_rd != '0)
+        && (register_status[riscv_instruction_decoder_rd] || (register_status_valid && (rd == riscv_instruction_decoder_rd)))) begin
         double_busy_hazard = '1;
     end
     else begin
@@ -168,8 +177,13 @@ always_comb begin
         end
     end
 
+    // what is captured in the flush clock is on the wrong path and never
+    // retires, so it must not mark its register busy either: the table's own
+    // flush has passed by the clock the mark lands, and a bit left set would
+    // hold every later reader and writer of that register for good
     if (flush) begin
-        _valid  = '0;
+        _valid                  = '0;
+        _register_status_valid  = '0;
     end
 end
 
