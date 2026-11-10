@@ -34,11 +34,13 @@
 // limitations under the License.
 //////////////////////////////////////////////////////////////////////////////////
 
+// Two cores. The single cycle core and the pipelined core run the program
+// below, and case_000 checks what it leaves behind in both.
 module testbench;
 
 localparam  CLOCK_FREQUENCY = 100_000_000;
 localparam  CLOCK_PERIOD    = 1e9/CLOCK_FREQUENCY;
-localparam  PROGRAM_SIZE    = 20;
+localparam  PROGRAM_SIZE    = 40;
 
 logic clock;
 logic reset_n;
@@ -112,7 +114,29 @@ always_comb begin
     program_data[16]    = 32'h00100113; // shouldn't happen
     program_data[17]    = 32'h00310133; // x2 = 7 + 64 = 71
     program_data[18]    = 32'h04202a23; // write mem[84] = 71
-    program_data[19]    = 32'hfb5ff06f; // loop back to start
+    program_data[19]    = 32'h00000013; // nop (fall through into the jalr/sub-word tests)
+    //jalr coverage: target only known from rs1 at execute
+    program_data[20]    = 32'h00000317; // auipc x6, 0        -> x6 = 80 (this pc)
+    program_data[21]    = 32'h010300e7; // jalr x1, 16(x6)    -> jump to pc 96, x1 = 88 (link)
+    program_data[22]    = 32'h29a00e13; // x28 = 666, must be SKIPPED by the jalr
+    program_data[23]    = 32'h29b00e93; // x29 = 667, must be SKIPPED by the jalr
+    program_data[24]    = 32'h04102c23; // pc 96: mem[88] = x1 = 88 (proves jalr target and link)
+    //sub-word store/load coverage
+    program_data[25]    = 32'hfff00513; // x10 = -1
+    program_data[26]    = 32'h04a02e23; // mem[92] = 0xFFFFFFFF
+    program_data[27]    = 32'h12300593; // x11 = 0x123
+    program_data[28]    = 32'h04b01f23; // sh x11, 94(x0)  (upper halfword lane)
+    program_data[29]    = 32'h05e01603; // lh  x12, 94(x0) -> 0x123 = 291
+    program_data[30]    = 32'h05e05683; // lhu x13, 94(x0) -> 291
+    program_data[31]    = 32'hffe00713; // x14 = -2
+    program_data[32]    = 32'h04e01d23; // sh x14, 90(x0)
+    program_data[33]    = 32'h05a01783; // lh  x15, 90(x0) -> -2 (sign-extend)
+    program_data[34]    = 32'h05a05803; // lhu x16, 90(x0) -> 65534 (zero-extend)
+    program_data[35]    = 32'hffb00913; // x18 = -5
+    program_data[36]    = 32'h05200ca3; // sb x18, 89(x0)  (byte lane 1)
+    program_data[37]    = 32'h05900983; // lb  x19, 89(x0) -> -5 (sign-extend)
+    program_data[38]    = 32'h05904a03; // lbu x20, 89(x0) -> 251 (zero-extend)
+    program_data[39]    = 32'hf65ff06f; // loop back to start (jal x0, -156)
 end
 
 initial begin
@@ -148,8 +172,11 @@ initial begin
     riscv_core_pipelined_program_memory_write_data_enable   = '0;
     halt    = 0;
     repeat(555) @(posedge clock);
+    case_000();
     $stop();
 end
+
+`include "case_000/case_000.svh"
 
 
 assign riscv_core_clock             = clock;
